@@ -1,10 +1,9 @@
-// src/app/notes/[id]/page.tsx
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
 import { fetchNoteById } from '../../../lib/api';
 import NoteDetailsClient from './NoteDetails.client';
 
 interface PageProps {
-  params: Promise<{ id: string }> | { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function NoteDetailsPage({ params }: PageProps) {
@@ -24,3 +23,4 @@ export default async function NoteDetailsPage({ params }: PageProps) {
     </HydrationBoundary>
   );
 }
+

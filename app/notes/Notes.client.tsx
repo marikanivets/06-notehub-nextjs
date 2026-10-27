@@ -1,56 +1,76 @@
-// src/app/notes/Notes.client.tsx
 'use client';
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { fetchNotes } from '../../lib/api';
-import SearchBox from '@/components/SearchBox/SearchBox';
-import Pagination from '@/components/Pagination/Pagination';
-import NoteList from '@/components/NoteList/NoteList';
-import css from '@/components/NotesPage/NotesPage.module.css';
-
-const ITEMS_PER_PAGE = 6;
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { fetchNotes, createNote } from '../../lib/api';
+import SearchBox from '../../components/SearchBox/SearchBox';
+import Pagination from '../../components/Pagination/Pagination';
+import NoteList from '../../components/NoteList/NoteList';
+import Modal from '../../components/Modal/Modal';
+import NoteForm from '../../components/NoteForm/NoteForm';
+import css from '../../components/NotesPage/NotesPage.module.css';
 
 export default function NotesClient() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data: notes = [], isLoading } = useQuery({
-    queryKey: ['notes'],
-    queryFn: fetchNotes,
+  // Дебаунс ручного поиска
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // сброс на 1 страницу при новом поиске
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Запрос идет к серверу с query-параметрами по ТЗ
+  const { data, isLoading } = useQuery({
+    queryKey: ['notes', debouncedSearch, page],
+    queryFn: () => fetchNotes(debouncedSearch, page),
+    placeholderData: keepPreviousData, // Требование ментора для плавной пагинации
   });
 
-  const filteredNotes = notes.filter(
-    (note) =>
-      note.title.toLowerCase().includes(search.toLowerCase()) ||
-      note.tag.toLowerCase().includes(search.toLowerCase())
-  );
-
-
-  const totalPages = Math.ceil(filteredNotes.length / ITEMS_PER_PAGE);
-  const startIndex = (page - 1) * ITEMS_PER_PAGE;
-  const paginatedNotes = filteredNotes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setPage(1);
-  };
-
-  if (isLoading) return <p>Loading, please wait...</p>;
+  const createMutation = useMutation({
+    mutationFn: createNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+  });
 
   return (
-    <div className={css.container}>
+    <main className={css.container}>
       <h1 className={css.title}>My Notes</h1>
       
-      <SearchBox value={search} onChange={handleSearchChange} />
-      
-      <NoteList notes={paginatedNotes} />
-      
-      <Pagination
-        currentPage={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-      />
-    </div>
+      <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+        <SearchBox value={search} onChange={setSearch} />
+        <button onClick={() => setIsModalOpen(true)} className={css.addBtn}>
+          Add Note
+        </button>
+      </div>
+
+      {isLoading && !data ? (
+        <p>Loading, please wait...</p>
+      ) : (
+        <>
+          <NoteList notes={data?.notes || []} />
+          <Pagination
+            currentPage={page}
+            totalPages={data?.totalPages || 1}
+            onPageChange={setPage}
+          />
+        </>
+      )}
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <NoteForm 
+          onSubmit={(newNote) => createMutation.mutate(newNote)} 
+          onClose={() => setIsModalOpen(false)} 
+        />
+      </Modal>
+    </main>
   );
 }
+
