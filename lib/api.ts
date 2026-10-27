@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Note } from 'types/note';
+import { Note } from '../types/note';
 
 const token = process.env.NEXT_PUBLIC_NOTEHUB_TOKEN;
 
