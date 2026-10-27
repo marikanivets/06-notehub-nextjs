@@ -1,4 +1,4 @@
-export type NoteTag = 'personal' | 'work' | 'study' | 'health' | 'other';
+export type NoteTag = 'Todo' | 'Work' | 'Personal' | 'Meeting' | 'Shopping';
 
 export interface Note {
   id: string;
@@ -15,7 +15,3 @@ export interface CreateNoteInput {
   content: string;
 }
 
-export interface ApiResponse {
-  notes: Note[];
-  totalPages: number;
-}

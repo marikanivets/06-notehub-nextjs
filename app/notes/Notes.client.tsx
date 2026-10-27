@@ -17,20 +17,19 @@ export default function NotesClient() {
   const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Дебаунс ручного поиска
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
-      setPage(1); // сброс на 1 страницу при новом поиске
+      setPage(1); 
     }, 400);
     return () => clearTimeout(handler);
   }, [search]);
 
-  // Запрос идет к серверу с query-параметрами по ТЗ
+  
   const { data, isLoading } = useQuery({
     queryKey: ['notes', debouncedSearch, page],
     queryFn: () => fetchNotes(debouncedSearch, page),
-    placeholderData: keepPreviousData, // Требование ментора для плавной пагинации
+    placeholderData: keepPreviousData, 
   });
 
   const createMutation = useMutation({
@@ -64,13 +63,14 @@ export default function NotesClient() {
         </>
       )}
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <NoteForm 
-          onSubmit={(newNote) => createMutation.mutate(newNote)} 
-          onClose={() => setIsModalOpen(false)} 
-        />
-      </Modal>
+            {isModalOpen && (
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+          <NoteForm 
+            onSubmit={(newNote) => createMutation.mutate(newNote)} 
+            onClose={() => setIsModalOpen(false)} 
+          />
+        </Modal>
+      )}
     </main>
   );
 }
-

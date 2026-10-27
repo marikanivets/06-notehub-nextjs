@@ -1,5 +1,10 @@
 import axios from 'axios';
-import { Note, CreateNoteInput, ApiResponse, NoteTag } from '../types/note';
+import { Note, CreateNoteInput } from '../types/note';
+
+export interface ApiResponse {
+  notes: Note[];
+  totalPages: number;
+}
 
 const token = process.env.NEXT_PUBLIC_NOTEHUB_TOKEN;
 
