@@ -2,11 +2,12 @@
 
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { createNote } from '../../lib/api';
 import { CreateNoteInput, NoteTag } from '../../types/note';
 import css from './NoteForm.module.css';
 
 interface NoteFormProps {
-  onSubmit: (data: CreateNoteInput) => void;
   onClose: () => void;
 }
 
@@ -19,11 +20,20 @@ const NoteSchema = Yup.object().shape({
     .oneOf(['Todo', 'Work', 'Personal', 'Meeting', 'Shopping'] as NoteTag[])
     .required('Tag is required!'),
   content: Yup.string()
-    .min(10, 'Content is too short!')
-    .required('Content is required!'),
+    .max(500, 'Content is too long! Max 500 characters.'), // По ТЗ: необязательное, макс 500
 });
 
-export default function NoteForm({ onSubmit, onClose }: NoteFormProps) {
+export default function NoteForm({ onClose }: NoteFormProps) {
+  const queryClient = useQueryClient();
+
+  const createMutation = useMutation({
+    mutationFn: createNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      onClose();
+    },
+  });
+
   const initialValues: CreateNoteInput = {
     title: '',
     tag: 'Personal',
@@ -34,13 +44,11 @@ export default function NoteForm({ onSubmit, onClose }: NoteFormProps) {
     <Formik
       initialValues={initialValues}
       validationSchema={NoteSchema}
-      onSubmit={(values, { resetForm }) => {
-        onSubmit(values);
-        resetForm();
-        onClose();
+      onSubmit={(values) => {
+        createMutation.mutate(values);
       }}
     >
-      {({ isSubmitting }) => (
+      {() => (
         <Form className={css.form}>
           <h2>Create New Note</h2>
           
@@ -61,20 +69,34 @@ export default function NoteForm({ onSubmit, onClose }: NoteFormProps) {
           </div>
 
           <div className={css.fieldWrapper}>
-            <Field as="textarea" name="content" placeholder="Content" />
+            <Field as="textarea" name="content" placeholder="Content (optional)" />
             <ErrorMessage name="content" component="span" className={css.error} />
           </div>
 
           <div className={css.actions}>
-            <button type="button" onClick={onClose} className={css.cancelBtn}>
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className={css.cancelBtn}
+              disabled={createMutation.isPending}
+            >
               Cancel
             </button>
-            <button type="submit" disabled={isSubmitting} className={css.submitBtn}>
-              Add Note
+            <button 
+              type="submit" 
+              className={css.submitBtn}
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? 'Adding...' : 'Add Note'}
             </button>
           </div>
+          
+          {createMutation.isError && (
+            <p className={css.errorGlobal}>Failed to create note. Try again.</p>
+          )}
         </Form>
       )}
     </Formik>
   );
 }
+
